@@ -42,6 +42,7 @@ interface CalculatorFormula {
   availableVariables: string[] // Переменные из текущей формулы
   previousFormulasVariables: string[] // Переменные из предыдущих формул
   isValid: boolean // Валидация: остался ли только один результат
+  formulaIndex: number // Индекс формулы в калькуляторе для уникальности переменных
 }
 
 export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab }) => {
@@ -89,11 +90,14 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
   }
 
   const handleAddFormulaToCalculator = (formula: any) => {
-    // Получаем переменные из предыдущих формул
-    const previousFormulasVariables = calculatorFormulas.flatMap(f => f.variables.map(v => v.key))
+    // Получаем переменные из предыдущих формул с префиксами
+    const previousFormulasVariables = calculatorFormulas.flatMap(f => 
+      f.variables.map(v => `${v.key}_${f.formulaIndex}`)
+    )
     
     // Переменные из текущей формулы
     const currentFormulaVariables = formula.variables?.map((v: any) => v.key) || []
+    const formulaIndex = calculatorFormulas.length
     
     // Создаем поля ввода (все переменные кроме одной - результата)
     const inputFields = formula.variables?.slice(0, -1).map((v: any) => ({
@@ -115,7 +119,8 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
       resultValue: '',
       availableVariables: currentFormulaVariables,
       previousFormulasVariables,
-      isValid: false
+      isValid: false,
+      formulaIndex
     }
     
     setCalculatorFormulas(prev => [...prev, newCalculatorFormula])
@@ -143,8 +148,8 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
             // При зависимости используем значение зависимости
             return field.dependencyValue
           } else {
-            // При обычном выборе используем выбранную переменную
-            return field.selectedVariable
+            // При обычном выборе используем выбранную переменную с префиксом формулы
+            return field.selectedVariable ? `${field.selectedVariable}_${f.formulaIndex}` : ''
           }
         }).filter(Boolean)
         
@@ -205,8 +210,8 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
             // При зависимости используем значение зависимости
             return field.dependencyValue
           } else {
-            // При обычном выборе используем выбранную переменную
-            return field.selectedVariable
+            // При обычном выборе используем выбранную переменную с префиксом формулы
+            return field.selectedVariable ? `${field.selectedVariable}_${f.formulaIndex}` : ''
           }
         }).filter(Boolean)
         
@@ -255,8 +260,8 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
             // При зависимости используем значение зависимости
             return field.dependencyValue
           } else {
-            // При обычном выборе используем выбранную переменную
-            return field.selectedVariable
+            // При обычном выборе используем выбранную переменную с префиксом формулы
+            return field.selectedVariable ? `${field.selectedVariable}_${f.formulaIndex}` : ''
           }
         }).filter(Boolean)
         
@@ -319,6 +324,7 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
           expression: f.expression,
           variables: f.variables,
           result: f.result,
+          formulaIndex: f.formulaIndex,
           inputFields: f.inputFields.map(field => ({
             variable: field.variable,
             selectedVariable: field.selectedVariable,
@@ -330,7 +336,7 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
       }
 
       // Определяем, создаем новый калькулятор или обновляем существующий
-      const isUpdate = tab.id && tab.id !== 'new'
+      const isUpdate = tab.id && tab.id !== 'new' && !tab.id.startsWith('calc_')
       const url = isUpdate ? `/api/calculators/${tab.id}` : '/api/calculators'
       const method = isUpdate ? 'PUT' : 'POST'
 
@@ -588,7 +594,7 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
                         {field.isDependency && field.dependencyValue ? (
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Chip 
-                              label={field.selectedVariable}
+                              label={`${field.selectedVariable}_${formula.formulaIndex}`}
                               size="small" 
                               color="primary"
                               variant="filled"
@@ -605,7 +611,7 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
                           </Box>
                         ) : (
                           <Chip 
-                            label={field.selectedVariable || 'Не выбрано'}
+                            label={field.selectedVariable ? `${field.selectedVariable}_${formula.formulaIndex}` : 'Не выбрано'}
                             size="small" 
                             color={field.selectedVariable ? 'primary' : 'default'}
                             variant={field.selectedVariable ? 'filled' : 'outlined'}
@@ -618,7 +624,7 @@ export const CalculatorInterface: React.FC<CalculatorInterfaceProps> = ({ tab })
                     <Divider sx={{ my: 2 }} />
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                       <Chip 
-                        label={formula.result || 'Не определен'} 
+                        label={formula.result ? `${formula.result}_${formula.formulaIndex}` : 'Не определен'} 
                         size="small" 
                         color={formula.isValid ? 'success' : 'default'}
                         variant={formula.isValid ? 'filled' : 'outlined'}
