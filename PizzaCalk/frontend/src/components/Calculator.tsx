@@ -429,35 +429,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
           {showSmallPizzaOption || (extraSlices > 0 && extraSlices <= 4) ? (
             // Варианты расчета (кликабельные)
             <div className={`grid gap-3 ${showSmallPizzaOption ? 'grid-cols-3' : 'grid-cols-2'}`}>
-              {/* Вариант 1: Большие пиццы */}
-              <button
-                onClick={() => setSelectedVariant('current')}
-                className={`border-2 rounded-lg p-3 transition-all ${
-                  selectedVariant === 'current'
-                    ? 'border-pizza-500 bg-pizza-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-xs text-gray-600 mb-2 text-center font-medium">Большие</div>
-                <div className="space-y-2">
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-blue-600">{largePizzaCount}</div>
-                    <div className="text-xs text-gray-600">Пицц</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-green-600">{largePizzaList.filter(p => p.isFree).length}</div>
-                    <div className="text-xs text-gray-600">Бесплатных</div>
-                  </div>
-                  {selectedVariant === 'current' && extraSlices > 0 && (
-                    <div className="text-center">
-                      <div className="text-sm font-bold text-orange-600">{extraSlices}</div>
-                      <div className="text-xs text-orange-800">Лишних</div>
-                    </div>
-                  )}
-                </div>
-              </button>
-              
-              {/* Вариант 2: Маленькие пиццы (если отличаются) */}
+              {/* Вариант 1: Маленькие пиццы (если отличаются) - ВСЕГДА СЛЕВА */}
               {showSmallPizzaOption && smallCalc && (
                 <button
                   onClick={() => setSelectedVariant('small')}
@@ -486,6 +458,34 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                   </div>
                 </button>
               )}
+              
+              {/* Вариант 2: Большие пиццы */}
+              <button
+                onClick={() => setSelectedVariant('current')}
+                className={`border-2 rounded-lg p-3 transition-all ${
+                  selectedVariant === 'current'
+                    ? 'border-pizza-500 bg-pizza-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-xs text-gray-600 mb-2 text-center font-medium">Большие</div>
+                <div className="space-y-2">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-blue-600">{largePizzaCount}</div>
+                    <div className="text-xs text-gray-600">Пицц</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-green-600">{largePizzaList.filter(p => p.isFree).length}</div>
+                    <div className="text-xs text-gray-600">Бесплатных</div>
+                  </div>
+                  {selectedVariant === 'current' && extraSlices > 0 && (
+                    <div className="text-center">
+                      <div className="text-sm font-bold text-orange-600">{extraSlices}</div>
+                      <div className="text-xs text-orange-800">Лишних</div>
+                    </div>
+                  )}
+                </div>
+              </button>
               
               {/* Вариант 3: Убрать лишние (только если есть лишние 1-4 куска) */}
               {extraSlices > 0 && extraSlices <= 4 && (
