@@ -310,14 +310,18 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                   </div>
                 </div>
                 
-                {/* Результаты расчета под пользователем */}
+                {/* Визуализация кусков пиццы */}
                 <div className="px-3 pb-3">
-                  <div className="bg-gray-50 rounded-lg p-2 text-xs">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Получит:</span>
-                      <span className={`font-medium ${gotExtra ? 'text-green-600' : 'text-gray-900'}`}>
-                        {userActualSlices} {gotExtra && `(+${userActualSlices - userRequiredSlices})`}
-                      </span>
+                  <div className="bg-gray-50 rounded-lg p-2">
+                    <div className="flex flex-wrap gap-1 justify-center">
+                      {/* Основные куски (цветные) */}
+                      {Array.from({ length: userRequiredSlices }).map((_, i) => (
+                        <span key={`main-${i}`} className="text-xl" title="Основной кусок">🍕</span>
+                      ))}
+                      {/* Дополнительные куски (черно-белые) */}
+                      {gotExtra && Array.from({ length: userActualSlices - userRequiredSlices }).map((_, i) => (
+                        <span key={`extra-${i}`} className="text-xl grayscale" title="Дополнительный кусок">🍕</span>
+                      ))}
                     </div>
                   </div>
                 </div>
