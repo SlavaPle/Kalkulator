@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { User } from '../types'
 import { Plus, Users, Trash2, Calculator, Minus, Settings } from 'lucide-react'
 import SettingsModal, { PizzaSettings } from './SettingsModal'
@@ -186,6 +186,9 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
   // Шаг 1: Получаем общее количество желаемых кусков
   const totalMinSlices = users.reduce((sum, user) => sum + user.minSlices, 0)
   
+  // Шаг 1.1: Получаем общее количество фактических кусков (для отображения)
+  const totalActualSlices = users.reduce((sum, user) => sum + user.minSlices, 0)
+  
   // Шаг 2: Находим ближайшее оптимальное количество пицц (большие)
   const largePizzaCount = Math.ceil(totalMinSlices / pizzaSettings.largePizzaSlices)
   const largePizzaList = createPizzaList(largePizzaCount, false)
@@ -207,23 +210,17 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
   
   // Основной расчет (большие пиццы или выбранный вариант)
   let pizzaList = largePizzaList
-  let pizzaCount = largePizzaCount
   
   if (selectedVariant === 'small') {
     pizzaList = smallPizzaList
-    pizzaCount = smallPizzaCount
   }
   
   // Шаг 4: Теперь распределяем куски на человека на основе pizzaList
   const currentCalc = calculateDistribution(pizzaList)
   const actualSlices = currentCalc.distribution
-  const extraSlices = currentCalc.extraSlices
-  
-  // Расчеты для маленьких пицц (удалено, так как теперь используем оптимальную комбинацию)
   
   // Расчет лишних кусков для больших пицц (нужен для отображения кнопки "-1 пицца")
-  const largeCalc = calculateDistribution(largePizzaList)
-  const largeExtraSlices = largeCalc.extraSlices
+  const largeExtraSlices = (largePizzaCount * pizzaSettings.largePizzaSlices) - totalActualSlices
   
   // Альтернативный расчет (если убрать лишние куски) - только для больших
   const altPizzaCount = largePizzaCount - 1
@@ -231,10 +228,36 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
   const altCalc = calculateDistribution(altPizzaList)
   const altMissingSlices = altCalc.extraSlices < 0 ? Math.abs(altCalc.extraSlices) : 0
   
+  // Подсчитываем количество активных вариантов для позиционирования
+  const hasOptimal = showOptimalOption
+  const hasLarge = true // Большие пиццы всегда показываются
+  const hasReduced = altMissingSlices > 0 && altMissingSlices <= Math.floor(pizzaSettings.largePizzaSlices / 4) && altPizzaCount > 0
+  
+  const activeVariants = [hasOptimal, hasLarge, hasReduced].filter(Boolean).length
+  
+  // Автоматически выбираем единственный доступный вариант
+  useEffect(() => {
+    if (activeVariants === 1) {
+      if (hasOptimal) {
+        setSelectedVariant('small')
+      } else if (hasLarge) {
+        setSelectedVariant('current')
+      } else if (hasReduced) {
+        setSelectedVariant('reduced')
+      }
+    }
+  }, [activeVariants, hasOptimal, hasLarge, hasReduced])
+  
   // Если выбран альтернативный вариант, используем его
   if (selectedVariant === 'reduced') {
     Object.assign(actualSlices, altCalc.distribution)
   }
+  
+  // Рассчитываем дополнительные куски для каждого варианта
+  const currentCalcForExtra = calculateDistribution(largePizzaList)
+  
+  const currentExtraSlicesForUsers = Object.values(currentCalcForExtra.distribution).reduce((sum, slices) => sum + slices, 0) - totalActualSlices
+  const reducedExtraSlicesForUsers = Object.values(altCalc.distribution).reduce((sum, slices) => sum + slices, 0) - totalMinSlices
   
 
   const filteredSuggestions = savedUsers.filter(name => 
@@ -354,20 +377,99 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                 <div className="px-3 pb-3">
                   <div className="bg-gray-50 rounded-lg p-2">
                     <div className="flex flex-wrap gap-1 justify-center">
-                      {/* Основные куски (цветные) */}
-                      {Array.from({ length: userRequiredSlices }).map((_, i) => (
-                        <span key={`main-${i}`} className="text-xl" title="Основной кусок">🍕</span>
-                      ))}
-                      {/* Дополнительные куски (черно-белые) */}
-                      {gotExtra && Array.from({ length: userActualSlices - userRequiredSlices }).map((_, i) => (
-                        <span key={`extra-${i}`} className="text-xl grayscale" title="Дополнительный кусок">🍕</span>
-                      ))}
+                      {(() => {
+                        // Рассчитываем количество недостающих кусков только для выбранного варианта
+                        let missingSlicesCount = 0
+                        
+                        // Зачеркиваем только если этот вариант в фокусе (выбран)
+                        if (selectedVariant === 'small' && optimalRemainder < 0) {
+                          missingSlicesCount = Math.abs(optimalRemainder)
+                        } else if (selectedVariant === 'current' && currentCalcForExtra.extraSlices < 0) {
+                          missingSlicesCount = Math.abs(currentCalcForExtra.extraSlices)
+                        } else if (selectedVariant === 'reduced' && altMissingSlices > 0) {
+                          missingSlicesCount = altMissingSlices
+                        }
+                        
+                        // Определяем сколько кусков нужно зачеркнуть у этого пользователя
+                        // Распределяем по круговой схеме: отнимаем по 1 у каждого пользователя по очереди
+                        let slicesToCross = 0
+                        if (missingSlicesCount > 0) {
+                          // Полные круги - каждый получает одинаково
+                          const fullRounds = Math.floor(missingSlicesCount / users.length)
+                          slicesToCross = fullRounds
+                          
+                          // Остаток - распределяем первым пользователям
+                          const remainder = missingSlicesCount % users.length
+                          if (index < remainder) {
+                            slicesToCross++
+                          }
+                          
+                          slicesToCross = Math.min(slicesToCross, userRequiredSlices)
+                        }
+                        
+                        return (
+                          <>
+                            {/* Основные куски (цветные) */}
+                            {Array.from({ length: userRequiredSlices }).map((_, i) => {
+                              const shouldCross = slicesToCross > 0 && i >= (userRequiredSlices - slicesToCross)
+                              return (
+                                <span 
+                                  key={`main-${i}`} 
+                                  className={`text-xl ${shouldCross ? 'relative' : ''}`}
+                                  title={shouldCross ? "Не хватит" : "Основной кусок"}
+                                >
+                                  🍕
+                                  {shouldCross && (
+                                    <span className="absolute inset-0 flex items-center justify-center">
+                                      <span className="w-full h-0.5 bg-red-600 rotate-45 transform scale-150"></span>
+                                    </span>
+                                  )}
+                      </span>
+                              )
+                            })}
+                            {/* Дополнительные куски (черно-белые) */}
+                            {gotExtra && Array.from({ length: userActualSlices - userRequiredSlices }).map((_, i) => (
+                              <span key={`extra-${i}`} className="text-xl grayscale" title="Дополнительный кусок">🍕</span>
+                            ))}
+                          </>
+                        )
+                      })()}
                     </div>
                   </div>
                 </div>
               </div>
             )
           })}
+          
+          {/* Панель с лишними кусками - показываем только для выбранного варианта */}
+          {(() => {
+            let extraSlicesCount = 0
+            
+            // Показываем панель только если вариант в фокусе
+            if (selectedVariant === 'small' && optimalRemainder > 0) {
+              extraSlicesCount = optimalRemainder
+            } else if (selectedVariant === 'current' && (currentExtraSlicesForUsers > 0 || largeExtraSlices > 0)) {
+              extraSlicesCount = currentExtraSlicesForUsers > 0 ? currentExtraSlicesForUsers : largeExtraSlices
+            } else if (selectedVariant === 'reduced' && reducedExtraSlicesForUsers > 0) {
+              extraSlicesCount = reducedExtraSlicesForUsers
+            }
+            
+            if (extraSlicesCount > 0) {
+              return (
+                <div className="bg-green-50 rounded-lg shadow-sm border-2 border-green-200 p-3">
+                  <div className="text-center mb-2">
+                    <span className="text-sm font-medium text-green-800">Лишние куски</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 justify-center">
+                    {Array.from({ length: extraSlicesCount }).map((_, i) => (
+                      <span key={`extra-slice-${i}`} className="text-xl" title="Лишний кусок">🍕</span>
+                    ))}
+                  </div>
+                </div>
+              )
+            }
+            return null
+          })()}
           </div>
         )}
 
@@ -469,25 +571,24 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
         <div className="mx-auto px-4 py-3" style={{ maxWidth: '800px' }}>
           {/* Расчет */}
-          {users.length > 0 && (
+      {users.length > 0 && (
             <div className="mb-3">
               <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200 min-h-[200px]">
                 
                 {showOptimalOption || (altMissingSlices > 0 && altMissingSlices <= Math.floor(pizzaSettings.largePizzaSlices / 4)) ? (
-                  // Варианты расчета (кликабельные)
-                  <div className={`grid gap-3 ${
-                    showOptimalOption && altMissingSlices > 0 && altMissingSlices <= Math.floor(pizzaSettings.largePizzaSlices / 4) ? 'grid-cols-3' : 'grid-cols-2'
-                  }`}>
+                  // Варианты расчета (кликабельные) - фиксированная сетка 9 полей
+                  <div className="grid grid-cols-9 gap-1">
                     {/* Вариант 1: Оптимальная комбинация (если отличается от обычных больших) - ВСЕГДА СЛЕВА */}
-                    {showOptimalOption && (
-                      <button
-                        onClick={() => setSelectedVariant('small')}
-                        className={`border-2 rounded-lg p-3 transition-all ${
-                          selectedVariant === 'small'
-                            ? 'border-pizza-500 bg-pizza-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
+                    {hasOptimal && (
+                      <div className={`${activeVariants === 3 ? 'col-span-3' : activeVariants === 2 ? 'col-span-4' : 'col-span-5'}`}>
+                        <button
+                          onClick={() => setSelectedVariant('small')}
+                          className={`border-2 rounded-lg p-3 transition-all w-full h-full ${
+                            selectedVariant === 'small'
+                              ? 'border-pizza-500 bg-pizza-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
                         <div className="text-xs text-gray-600 mb-2 text-center font-medium">Оптимальная комбинация</div>
                         <div className="space-y-2">
                           <div className="text-center">
@@ -505,145 +606,202 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                           <div className="text-center">
                             <div className="text-lg font-bold text-blue-600">
                               {totalMinSlices}
-                              {selectedVariant === 'small' && optimalRemainder > 0 && (
-                                <span className="text-gray-500 font-normal"> (+{optimalRemainder})</span>
+                              {optimalRemainder !== 0 && (
+                                <span className="text-gray-500 font-normal"> {optimalRemainder > 0 ? '+' : ''}</span>
                               )}
-                              {selectedVariant === 'small' && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Всего: {totalMinSlices + optimalRemainder} кусков
-                                </div>
+                              {optimalRemainder !== 0 && (
+                                <span className={`font-bold ${optimalRemainder > 0 ? 'text-green-600' : 'text-red-600'}`}>{optimalRemainder}</span>
+                              )}
+                              {optimalRemainder !== 0 && (
+                                <span className="text-gray-500 font-normal"> = </span>
+                              )}
+                              {optimalRemainder !== 0 && (
+                                <span className="text-blue-600 font-bold">{totalMinSlices + optimalRemainder}</span>
                               )}
                             </div>
                             <div className="text-xs text-gray-600">Заказано кусков</div>
                           </div>
                           <div className="text-center">
-                            <div className={`text-sm font-bold ${optimalRemainder > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <div className={`text-sm font-bold ${optimalRemainder !== 0 ? (optimalRemainder > 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
                               {Math.abs(optimalRemainder)}
                             </div>
-                            <div className={`text-xs ${optimalRemainder > 0 ? 'text-green-800' : 'text-red-800'}`}>
-                              {optimalRemainder > 0 ? 'Лишних' : 'Не хватит'}
+                            <div className={`text-xs ${optimalRemainder !== 0 ? (optimalRemainder > 0 ? 'text-green-800' : 'text-red-800') : 'text-gray-400'}`}>
+                              {optimalRemainder > 0 ? 'Лишних' : optimalRemainder < 0 ? 'Не хватит' : 'Лишних'}
                             </div>
                           </div>
                         </div>
-                      </button>
+                        </button>
+                      </div>
                     )}
+                    
+                    {/* Пустые места для центрирования */}
+                    {activeVariants === 2 && !hasOptimal && <div></div>}
+                    {activeVariants === 1 && hasLarge && <div></div>}
+                    {activeVariants === 1 && hasLarge && <div></div>}
                     
                     {/* Вариант 2: Большие пиццы */}
-                    <button
-                      onClick={() => setSelectedVariant('current')}
-                      className={`border-2 rounded-lg p-3 transition-all ${
-                        selectedVariant === 'current'
-                          ? 'border-pizza-500 bg-pizza-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="text-xs text-gray-600 mb-2 text-center font-medium">Большие</div>
-                      <div className="space-y-2">
-                        <div className="text-center">
-                          <div className="text-xl font-bold text-gray-900">{largePizzaCount}</div>
-                          <div className="text-xs text-gray-600">Пицц</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-blue-600">
-                            {totalMinSlices}
-                            {selectedVariant === 'current' && largeExtraSlices > 0 && (
-                              <span className="text-gray-500 font-normal"> (+{largeExtraSlices})</span>
-                            )}
-                            {selectedVariant === 'current' && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                Всего: {totalMinSlices + largeExtraSlices} кусков
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-600">Заказано кусков</div>
-                        </div>
-                        <div className="text-center">
-                          <div className={`text-sm font-bold ${largeExtraSlices > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {Math.abs(largeExtraSlices)}
-                          </div>
-                          <div className={`text-xs ${largeExtraSlices > 0 ? 'text-green-800' : 'text-red-800'}`}>
-                            {largeExtraSlices > 0 ? 'Лишних' : 'Не хватит'}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                    
-                    {/* Вариант 3: Убрать лишние (если при -1 пицце не хватит 1/4 пиццы и меньше и результат > 0) */}
-                    {altMissingSlices > 0 && altMissingSlices <= Math.floor(pizzaSettings.largePizzaSlices / 4) && altPizzaCount > 0 && (
-                      <button
-                        onClick={() => setSelectedVariant('reduced')}
-                        className={`border-2 rounded-lg p-3 transition-all ${
-                          selectedVariant === 'reduced'
-                            ? 'border-pizza-500 bg-pizza-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="text-xs text-gray-600 mb-2 text-center font-medium">-1 пицца</div>
-                        <div className="space-y-2">
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-gray-900">{altPizzaCount}</div>
-                            <div className="text-xs text-gray-600">Пицц</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-blue-600">
-                              {totalMinSlices}
-                              {selectedVariant === 'reduced' && altMissingSlices > 0 && (
-                                <span className="text-gray-500 font-normal"> (-{altMissingSlices})</span>
-                              )}
-                              {selectedVariant === 'reduced' && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Всего: {totalMinSlices - altMissingSlices} кусков
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-600">Заказано кусков</div>
-                          </div>
-                          {altMissingSlices > 0 && (
-                            <div className="text-center">
-                              <div className="text-sm font-bold text-red-600">{altMissingSlices}</div>
-                              <div className="text-xs text-red-800">Не хватит</div>
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    )}
+                    <div className={`${activeVariants === 3 ? 'col-span-3' : activeVariants === 2 ? 'col-span-4' : 'col-span-5'}`}>
+              <button
+                onClick={() => setSelectedVariant('current')}
+                          className={`border-2 rounded-lg p-3 transition-all w-full h-full ${
+                  selectedVariant === 'current'
+                    ? 'border-pizza-500 bg-pizza-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-xs text-gray-600 mb-2 text-center font-medium">Большие</div>
+                <div className="space-y-2">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-gray-900">{largePizzaCount}</div>
+                    <div className="text-xs text-gray-600">Пицц</div>
                   </div>
-                ) : (
-                  // Обычный расчет
-                  <div>
-                    <div className={`grid gap-4 ${extraSlices !== 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-900">{pizzaCount}</div>
-                        <div className="text-xs text-gray-600">Пицц</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">
-                          {totalMinSlices}
-                          {extraSlices > 0 && (
-                            <span className="text-gray-500 font-normal text-lg"> (+{extraSlices})</span>
-                          )}
-                          <div className="text-xs text-gray-500 mt-1">
-                            Всего: {totalMinSlices + extraSlices} кусков
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-600">Заказано кусков</div>
-                      </div>
-                      {extraSlices !== 0 && (
-                        <div className="text-center">
-                          <div className={`text-2xl font-bold ${extraSlices > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {Math.abs(extraSlices)}
-                          </div>
-                          <div className={`text-xs ${extraSlices > 0 ? 'text-green-800' : 'text-red-800'}`}>
-                            {extraSlices > 0 ? 'Лишних' : 'Не хватит'}
-                          </div>
-                        </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-blue-600">
+                      {totalActualSlices}
+                      {largeExtraSlices !== 0 && (
+                        <span className="text-gray-500 font-normal"> {largeExtraSlices > 0 ? '+' : ''}</span>
+                      )}
+                      {largeExtraSlices !== 0 && (
+                        <span className={`font-bold ${largeExtraSlices > 0 ? 'text-green-600' : 'text-red-600'}`}>{largeExtraSlices}</span>
+                      )}
+                      {largeExtraSlices !== 0 && (
+                        <span className="text-gray-500 font-normal"> = </span>
+                      )}
+                      {largeExtraSlices !== 0 && (
+                        <span className="text-blue-600 font-bold">{totalActualSlices + largeExtraSlices}</span>
                       )}
                     </div>
+                    <div className="text-xs text-gray-600">Заказано кусков</div>
+                </div>
+                    <div className="text-center">
+                    <div className={`text-sm font-bold ${largeExtraSlices !== 0 ? (largeExtraSlices > 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
+                      {Math.abs(largeExtraSlices)}
+                    </div>
+                    <div className={`text-xs ${largeExtraSlices !== 0 ? (largeExtraSlices > 0 ? 'text-green-800' : 'text-red-800') : 'text-gray-400'}`}>
+                      {largeExtraSlices > 0 ? 'Лишних' : largeExtraSlices < 0 ? 'Не хватит' : 'Лишних'}
+                    </div>
+                      </div>
                   </div>
-                )}
+                </button>
+                      </div>
+                    
+                    {/* Пустые места для центрирования после больших пицц */}
+                    {activeVariants === 1 && hasLarge && <div></div>}
+                    {activeVariants === 1 && hasLarge && <div></div>}
+              
+                    {/* Вариант 3: Убрать лишние (если при -1 пицце не хватит 1/4 пиццы и меньше и результат > 0) */}
+                    {hasReduced && (
+                      <div className={`${activeVariants === 3 ? 'col-span-3' : activeVariants === 2 ? 'col-span-4' : 'col-span-5'}`}>
+                <button
+                  onClick={() => setSelectedVariant('reduced')}
+                            className={`border-2 rounded-lg p-3 transition-all w-full h-full ${
+                    selectedVariant === 'reduced'
+                      ? 'border-pizza-500 bg-pizza-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-xs text-gray-600 mb-2 text-center font-medium">-1 пицца</div>
+                  <div className="space-y-2">
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-gray-900">{altPizzaCount}</div>
+                      <div className="text-xs text-gray-600">Пицц</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600">
+                        {totalMinSlices}
+                        {reducedExtraSlicesForUsers > 0 && (
+                          <span className="text-gray-500 font-normal"> +</span>
+                        )}
+                        {reducedExtraSlicesForUsers > 0 && (
+                          <span className="text-green-600 font-bold">{reducedExtraSlicesForUsers}</span>
+                        )}
+                        {reducedExtraSlicesForUsers > 0 && (
+                          <span className="text-gray-500 font-normal"> = </span>
+                        )}
+                        {reducedExtraSlicesForUsers > 0 && (
+                          <span className="text-blue-600 font-bold">{totalMinSlices + reducedExtraSlicesForUsers}</span>
+                        )}
+                        {altMissingSlices > 0 && (
+                          <span className="text-gray-500 font-normal"> -</span>
+                        )}
+                        {altMissingSlices > 0 && (
+                          <span className="text-red-600 font-bold">{altMissingSlices}</span>
+                        )}
+                        {altMissingSlices > 0 && (
+                          <span className="text-gray-500 font-normal"> = </span>
+                        )}
+                        {altMissingSlices > 0 && (
+                          <span className="text-blue-600 font-bold">{totalMinSlices - altMissingSlices}</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-600">Заказано кусков</div>
+                    </div>
+                      <div className="text-center">
+                      <div className={`text-sm font-bold ${reducedExtraSlicesForUsers > 0 ? 'text-green-600' : altMissingSlices > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                        {reducedExtraSlicesForUsers > 0 ? reducedExtraSlicesForUsers : altMissingSlices > 0 ? altMissingSlices : 0}
+                      </div>
+                      <div className={`text-xs ${reducedExtraSlicesForUsers > 0 ? 'text-green-800' : altMissingSlices > 0 ? 'text-red-800' : 'text-gray-400'}`}>
+                        {reducedExtraSlicesForUsers > 0 ? 'Лишних' : altMissingSlices > 0 ? 'Не хватит' : 'Лишних'}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+                        </div>
+              )}
+            </div>
+          ) : (
+            // Обычный расчет
+            <div className="grid grid-cols-9 gap-1">
+              {/* Пустые места для центрирования */}
+              <div></div>
+              <div></div>
+              
+              {/* Основной блок - 5 полей по центру */}
+              <div className="col-span-5">
+                <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200 min-h-[200px]">
+                  <div className="space-y-4">
+                <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-900">{largePizzaCount}</div>
+                  <div className="text-xs text-gray-600">Пицц</div>
+                </div>
+                <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {totalActualSlices}
+                        {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) && (
+                          <span className="text-gray-500 font-normal text-lg"> +</span>
+                        )}
+                        {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) && (
+                          <span className="text-green-600 font-bold text-lg">{currentExtraSlicesForUsers > 0 ? currentExtraSlicesForUsers : largeExtraSlices}</span>
+                        )}
+                        {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) && (
+                          <span className="text-gray-500 font-normal text-lg"> = </span>
+                        )}
+                        {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) && (
+                          <span className="text-blue-600 font-bold text-lg">{totalActualSlices + (currentExtraSlicesForUsers > 0 ? currentExtraSlicesForUsers : largeExtraSlices)}</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-600">Заказано кусков</div>
+                    </div>
+                    <div className="text-center">
+                      <div className={`text-2xl font-bold ${(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) ? 'text-green-600' : currentCalcForExtra.extraSlices < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                        {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) ? (currentExtraSlicesForUsers > 0 ? currentExtraSlicesForUsers : largeExtraSlices) : currentCalcForExtra.extraSlices < 0 ? Math.abs(currentCalcForExtra.extraSlices) : 0}
+                      </div>
+                      <div className={`text-xs ${(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) ? 'text-green-800' : currentCalcForExtra.extraSlices < 0 ? 'text-red-800' : 'text-gray-400'}`}>
+                        {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) ? 'Лишних' : currentCalcForExtra.extraSlices < 0 ? 'Не хватит' : 'Лишних'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
+              
+              {/* Пустые места для центрирования */}
+              <div></div>
+              <div></div>
             </div>
           )}
+              </div>
+        </div>
+      )}
 
           <div className="flex items-center justify-between gap-3">
             {/* Кнопка показа результатов */}
