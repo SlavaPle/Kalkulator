@@ -26,14 +26,23 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
   // Настройки пиццы (из localStorage или значения по умолчанию)
   const [pizzaSettings, setPizzaSettings] = useState<PizzaSettings>(() => {
     const saved = localStorage.getItem('pizzaSettings')
-    return saved ? JSON.parse(saved) : {
+    const defaultSettings = {
       smallPizzaSlices: 6,
       largePizzaSlices: 8,
       largePizzaPrice: 800,
       smallPizzaPricePercent: 65,
       freePizzaThreshold: 3,
-      useFreePizza: true
+      useFreePizza: true,
+      freePizzaIsSmall: false
     }
+    
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // Добавляем новое поле если его нет в сохраненных данных
+      return { ...defaultSettings, ...parsed }
+    }
+    
+    return defaultSettings
   })
 
   const handleAddUser = () => {
@@ -131,12 +140,22 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
     
     for (let i = 0; i < count; i++) {
       const isFree = pizzaSettings.useFreePizza && (i + 1) % pizzaSettings.freePizzaThreshold === 0
+      
+      // Если пицца бесплатная, используем настройку freePizzaIsSmall
+      let pizzaSlices = slices
+      let pizzaSize = useSmall ? 'small' : 'large'
+      
+      if (isFree && pizzaSettings.freePizzaIsSmall) {
+        pizzaSlices = pizzaSettings.smallPizzaSlices
+        pizzaSize = 'small'
+      }
+      
       pizzas.push({
         id: `pizza-${i}`,
-        slices: slices,
+        slices: pizzaSlices,
         price: price,
         isFree: isFree,
-        size: useSmall ? 'small' : 'large'
+        size: pizzaSize
       })
     }
     return pizzas
@@ -266,7 +285,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
 
   return (
     <div className="flex flex-col h-screen">
-      <div className="flex-1 overflow-y-auto pb-32">
+      <div className="flex-1 overflow-y-auto pb-80">
         <div className="space-y-6">
 
       {/* Список участников */}
@@ -415,7 +434,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                               return (
                                 <span 
                                   key={`main-${i}`} 
-                                  className={`text-xl ${shouldCross ? 'relative' : ''}`}
+                                  className={`text-base sm:text-xl ${shouldCross ? 'relative' : ''}`}
                                   title={shouldCross ? "Не хватит" : "Основной кусок"}
                                 >
                                   🍕
@@ -429,7 +448,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                             })}
                             {/* Дополнительные куски (черно-белые) */}
                             {gotExtra && Array.from({ length: userActualSlices - userRequiredSlices }).map((_, i) => (
-                              <span key={`extra-${i}`} className="text-xl grayscale" title="Дополнительный кусок">🍕</span>
+                              <span key={`extra-${i}`} className="text-base sm:text-xl grayscale" title="Дополнительный кусок">🍕</span>
                             ))}
                           </>
                         )
@@ -443,6 +462,15 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
           
           {/* Панель с лишними кусками - показываем только для выбранного варианта */}
           {(() => {
+            // Проверяем, есть ли хотя бы один пользователь с "Можно больше"
+            const hasCanBeMore = users.some(user => user.canBeMore)
+            
+            // Если есть пользователи с "Можно больше", лишние куски распределяются как серые
+            // и зеленую панель показывать не нужно
+            if (hasCanBeMore) {
+              return null
+            }
+            
             let extraSlicesCount = 0
             
             // Показываем панель только если вариант в фокусе
@@ -462,7 +490,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                   </div>
                   <div className="flex flex-wrap gap-1 justify-center">
                     {Array.from({ length: extraSlicesCount }).map((_, i) => (
-                      <span key={`extra-slice-${i}`} className="text-xl" title="Лишний кусок">🍕</span>
+                      <span key={`extra-slice-${i}`} className="text-base sm:text-xl" title="Лишний кусок">🍕</span>
                     ))}
                   </div>
                 </div>
@@ -592,7 +620,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                         <div className="text-xs text-gray-600 mb-2 text-center font-medium">Оптимальная комбинация</div>
                         <div className="space-y-2">
                           <div className="text-center">
-                            <div className="text-xl font-bold text-gray-900">
+                            <div className="text-base sm:text-xl font-bold text-gray-900">
                               {optimalLarge === 0 ? optimalSmall : 
                                optimalSmall === 0 ? optimalLarge : 
                                `${optimalLarge} (${optimalSmall})`}
@@ -604,7 +632,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                             </div>
                           </div>
                           <div className="text-center">
-                            <div className="text-lg font-bold text-blue-600">
+                            <div className="text-sm sm:text-lg font-bold text-blue-600">
                               {totalMinSlices}
                               {optimalRemainder !== 0 && (
                                 <span className="text-gray-500 font-normal"> {optimalRemainder > 0 ? '+' : ''}</span>
@@ -652,11 +680,11 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                 <div className="text-xs text-gray-600 mb-2 text-center font-medium">Большие</div>
                 <div className="space-y-2">
                   <div className="text-center">
-                    <div className="text-xl font-bold text-gray-900">{largePizzaCount}</div>
+                    <div className="text-base sm:text-xl font-bold text-gray-900">{largePizzaCount}</div>
                     <div className="text-xs text-gray-600">Пицц</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold text-blue-600">
+                    <div className="text-sm sm:text-lg font-bold text-blue-600">
                       {totalActualSlices}
                       {largeExtraSlices !== 0 && (
                         <span className="text-gray-500 font-normal"> {largeExtraSlices > 0 ? '+' : ''}</span>
@@ -703,11 +731,11 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                   <div className="text-xs text-gray-600 mb-2 text-center font-medium">-1 пицца</div>
                   <div className="space-y-2">
                     <div className="text-center">
-                      <div className="text-xl font-bold text-gray-900">{altPizzaCount}</div>
+                      <div className="text-base sm:text-xl font-bold text-gray-900">{altPizzaCount}</div>
                       <div className="text-xs text-gray-600">Пицц</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-blue-600">
+                      <div className="text-sm sm:text-lg font-bold text-blue-600">
                         {totalMinSlices}
                         {reducedExtraSlicesForUsers > 0 && (
                           <span className="text-gray-500 font-normal"> +</span>
@@ -761,29 +789,29 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                 <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200 min-h-[200px]">
                   <div className="space-y-4">
                 <div className="text-center">
-                      <div className="text-2xl font-bold text-gray-900">{largePizzaCount}</div>
+                      <div className="sm:text-lg font-bold text-gray-900">{largePizzaCount}</div>
                   <div className="text-xs text-gray-600">Пицц</div>
                 </div>
                 <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className="sm:text-lg font-bold text-blue-600">
                         {totalActualSlices}
                         {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) && (
-                          <span className="text-gray-500 font-normal text-lg"> +</span>
+                          <span className="text-gray-500 font-normal text-sm sm:text-lg"> +</span>
                         )}
                         {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) && (
-                          <span className="text-green-600 font-bold text-lg">{currentExtraSlicesForUsers > 0 ? currentExtraSlicesForUsers : largeExtraSlices}</span>
+                          <span className="text-green-600 font-bold text-sm sm:text-lg">{currentExtraSlicesForUsers > 0 ? currentExtraSlicesForUsers : largeExtraSlices}</span>
                         )}
                         {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) && (
-                          <span className="text-gray-500 font-normal text-lg"> = </span>
+                          <span className="text-gray-500 font-normal text-sm sm:text-lg"> = </span>
                         )}
                         {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) && (
-                          <span className="text-blue-600 font-bold text-lg">{totalActualSlices + (currentExtraSlicesForUsers > 0 ? currentExtraSlicesForUsers : largeExtraSlices)}</span>
+                          <span className="text-blue-600 font-bold text-sm sm:text-lg">{totalActualSlices + (currentExtraSlicesForUsers > 0 ? currentExtraSlicesForUsers : largeExtraSlices)}</span>
                         )}
                       </div>
                       <div className="text-xs text-gray-600">Заказано кусков</div>
                     </div>
                     <div className="text-center">
-                      <div className={`text-2xl font-bold ${(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) ? 'text-green-600' : currentCalcForExtra.extraSlices < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                      <div className={`sm:text-lg font-bold ${(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) ? 'text-green-600' : currentCalcForExtra.extraSlices < 0 ? 'text-red-600' : 'text-gray-400'}`}>
                         {(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) ? (currentExtraSlicesForUsers > 0 ? currentExtraSlicesForUsers : largeExtraSlices) : currentCalcForExtra.extraSlices < 0 ? Math.abs(currentCalcForExtra.extraSlices) : 0}
                       </div>
                       <div className={`text-xs ${(currentExtraSlicesForUsers > 0 || largeExtraSlices > 0) ? 'text-green-800' : currentCalcForExtra.extraSlices < 0 ? 'text-red-800' : 'text-gray-400'}`}>

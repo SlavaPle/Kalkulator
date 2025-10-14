@@ -9,6 +9,7 @@ export interface PizzaSettings {
   smallPizzaPricePercent: number // процент цены маленькой от большой (0-100)
   freePizzaThreshold: number
   useFreePizza: boolean // использовать бесплатную пиццу
+  freePizzaIsSmall: boolean // бесплатная пицца малая (иначе большая)
 }
 
 interface SettingsModalProps {
@@ -98,13 +99,24 @@ const SettingsModal = ({ isOpen, onClose, settings, onSave }: SettingsModalProps
                 </label>
                 
                 {localSettings.useFreePizza && (
-                  <NumericStepper
-                    label="Каждая N-я пицца бесплатная"
-                    value={localSettings.freePizzaThreshold}
-                    onChange={(value) => setLocalSettings({...localSettings, freePizzaThreshold: value})}
-                    min={2}
-                    max={10}
-                  />
+                  <>
+                    <NumericStepper
+                      label="Каждая N-я пицца бесплатная"
+                      value={localSettings.freePizzaThreshold}
+                      onChange={(value) => setLocalSettings({...localSettings, freePizzaThreshold: value})}
+                      min={2}
+                      max={10}
+                    />
+                    <label className="flex items-center space-x-2 cursor-pointer ml-4">
+                      <input
+                        type="checkbox"
+                        checked={localSettings.freePizzaIsSmall}
+                        onChange={(e) => setLocalSettings({...localSettings, freePizzaIsSmall: e.target.checked})}
+                        className="h-4 w-4 text-pizza-600 focus:ring-pizza-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700">Малая пицца (иначе большая)</span>
+                    </label>
+                  </>
                 )}
               </div>
             </div>
