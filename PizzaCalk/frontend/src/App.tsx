@@ -27,33 +27,38 @@ function App() {
     setResult(null)
   }
 
-  const handleShowResults = () => {
+  const handleShowResults = (calculationData: any) => {
     if (users.length === 0) {
       alert('Добавьте хотя бы одного участника')
       return
     }
 
-    // Расчет на лету
-    const totalSlices = users.reduce((sum, user) => sum + user.minSlices, 0)
-    const pizzaCount = Math.ceil(totalSlices / 8)
-    const freePizzaCount = Math.floor(pizzaCount / 3)
+    // Получаем данные от Calculator
+    const { pizzaList, userSlicesDistribution } = calculationData
+    
+    // Подсчитываем статистику
+    const pizzaCount = pizzaList.length
+    const freePizzaCount = pizzaList.filter((p: any) => p.isFree).length
+    const totalSlices = pizzaList.reduce((sum: number, p: any) => sum + p.slices, 0)
     
     const result = {
-      optimalPizzas: Array.from({ length: pizzaCount }, (_, i) => ({
+      optimalPizzas: pizzaList.map((pizza: any, i: number) => ({
         id: `pizza-${i}`,
-        type: 'Маргарита',
-        size: 'large',
-        price: 800,
-        slices: 8,
-        isFree: i < freePizzaCount
+        type: pizza.type || 'Маргарита',
+        size: pizza.size,
+        price: pizza.price,
+        slices: pizza.slices,
+        isFree: pizza.isFree
       })),
-      totalCost: pizzaCount * 800,
-      freePizzaValue: freePizzaCount * 800,
+      totalCost: pizzaList.reduce((sum: number, p: any) => sum + (p.isFree ? 0 : p.price), 0),
+      freePizzaValue: pizzaList.filter((p: any) => p.isFree).reduce((sum: number, p: any) => sum + p.price, 0),
       totalUsers: users.length,
       totalSlices,
       pizzaCount,
       freePizzaCount,
-      regularPizzaCount: pizzaCount - freePizzaCount
+      regularPizzaCount: pizzaCount - freePizzaCount,
+      userSlicesDistribution, // Передаем распределение кусков
+      calculationData // Передаем все данные расчета
     }
     
     setResult(result)

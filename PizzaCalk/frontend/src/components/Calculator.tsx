@@ -6,7 +6,7 @@ import SettingsModal, { PizzaSettings } from './SettingsModal'
 interface CalculatorProps {
   users: User[]
   setUsers: (users: User[]) => void
-  onShowResults: () => void
+  onShowResults: (calculationData: any) => void
 }
 
 const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps) => {
@@ -169,7 +169,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
   const calculateDistribution = (pizzaList: any[]) => {
     // Суммируем куски всех пицц в списке (каждая может иметь разное количество)
     const totalPizzaSlices = pizzaList.reduce((sum, pizza) => sum + pizza.slices, 0)
-    let pieces = totalPizzaSlices - totalMinSlices  // Лишние куски
+    let pieces = totalPizzaSlices - totalMinSlices  // Лишние куски (может быть отрицательным)
     const distribution: { [key: string]: number } = {}
     
     // Инициализация - каждый получает минимум
@@ -177,24 +177,45 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
       distribution[user.id] = user.minSlices
     })
     
-    // Распределяем лишние куски по схеме
-    // Распределяем оставшиеся кусочки по кругу
-    while (pieces > 0) {
-      let distributed = false
+    // Если кусков не хватает (pieces < 0), вычитаем по круговой схеме
+    if (pieces < 0) {
+      let missing = Math.abs(pieces)
       
-      for (const user of users) {
-        if (pieces <= 0) break // Проверка на 0 или отрицательное значение
-        
-        if (user.canBeMore) {
-          // Добавляем по 1 кусочку
-          distribution[user.id]++
-          pieces--
-          distributed = true
+      // Вычитаем по той же схеме, что и зачеркивание
+      // Полные круги - у каждого вычитаем одинаково
+      const fullRounds = Math.floor(missing / users.length)
+      const remainder = missing % users.length
+      
+      users.forEach((user, index) => {
+        let toSubtract = fullRounds
+        // Остаток распределяем на первых пользователей
+        if (index < remainder) {
+          toSubtract++
         }
+        toSubtract = Math.min(toSubtract, distribution[user.id])
+        distribution[user.id] -= toSubtract
+      })
+    }
+    // Если есть лишние куски, распределяем их
+    else if (pieces > 0) {
+      // Распределяем оставшиеся кусочки по кругу
+      while (pieces > 0) {
+        let distributed = false
+        
+        for (const user of users) {
+          if (pieces <= 0) break
+          
+          if (user.canBeMore) {
+            // Добавляем по 1 кусочку
+            distribution[user.id]++
+            pieces--
+            distributed = true
+          }
+        }
+        
+        // Если никому не удалось распределить, выходим из цикла
+        if (!distributed) break
       }
-      
-      // Если никому не удалось распределить, выходим из цикла
-      if (!distributed) break
     }
     
     return {
@@ -838,7 +859,56 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
             {/* Кнопка показа результатов */}
             {users.length > 0 && (
               <button
-                onClick={onShowResults}
+                onClick={() => {
+                  // Подготавливаем данные для передачи на страницу результатов
+                  let finalPizzaList = pizzaList
+                  let finalDistribution = actualSlices
+                  
+                  if (selectedVariant === 'reduced') {
+                    finalPizzaList = altPizzaList
+                    finalDistribution = altCalc.distribution
+                  } else if (selectedVariant === 'small') {
+                    const [optimalLarge, optimalSmall] = bestFactors(
+                      totalMinSlices, 
+                      pizzaSettings.largePizzaSlices, 
+                      pizzaSettings.smallPizzaSlices
+                    )
+                    const optimalPizzaList = []
+                    for (let i = 0; i < optimalLarge; i++) {
+                      optimalPizzaList.push({ 
+                        id: `pizza-large-${i}`,
+                        slices: pizzaSettings.largePizzaSlices, 
+                        price: pizzaSettings.largePizzaPrice, 
+                        isFree: pizzaSettings.useFreePizza && (i + 1) % pizzaSettings.freePizzaThreshold === 0,
+                        size: 'large',
+                        type: 'Маргарита'
+                      })
+                    }
+                    for (let i = 0; i < optimalSmall; i++) {
+                      optimalPizzaList.push({ 
+                        id: `pizza-small-${i}`,
+                        slices: pizzaSettings.smallPizzaSlices, 
+                        price: getActualSmallPizzaPrice(), 
+                        isFree: false,
+                        size: 'small',
+                        type: 'Маргарита'
+                      })
+                    }
+                    const optimalCalc = calculateDistribution(optimalPizzaList)
+                    finalPizzaList = optimalPizzaList
+                    finalDistribution = optimalCalc.distribution
+                  }
+                  
+                  // Формируем данные для Results
+                  const calculationData = {
+                    selectedVariant,
+                    pizzaList: finalPizzaList,
+                    userSlicesDistribution: finalDistribution,
+                    pizzaSettings
+                  }
+                  
+                  onShowResults(calculationData)
+                }}
                 className="flex-1 bg-pizza-600 text-white py-2.5 px-6 rounded-lg font-medium flex items-center justify-center space-x-2"
               >
                 <Calculator className="h-5 w-5" />
