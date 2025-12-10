@@ -113,21 +113,23 @@ const Results = ({ result, users, onBack, onNew }: ResultsProps) => {
       </div>
 
       {/* Order amount input */}
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Order amount
-        </label>
-        <input
-          type="number"
-          value={orderAmount}
-          onChange={handleOrderAmountChange}
-          placeholder="Enter order amount"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pizza-500 focus:border-pizza-500 text-lg"
-        />
+      <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200 flex items-center gap-4">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Order amount
+          </label>
+          <input
+            type="number"
+            value={orderAmount}
+            onChange={handleOrderAmountChange}
+            placeholder="Enter order amount"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pizza-500 focus:border-pizza-500 text-lg"
+          />
+        </div>
 
         {pricePerSlice > 0 && (
-          <div className="mt-4 text-center">
-            <div className="text-gray-600 text-sm mb-1">Price per slice</div>
+          <div className="text-right pl-4 border-l border-gray-200 min-w-[120px]">
+            <div className="text-gray-600 text-sm mb-1 whitespace-nowrap">Price per slice</div>
             <div className="text-2xl font-bold text-pizza-600">
               {formatCurrency(pricePerSlice)}
             </div>
