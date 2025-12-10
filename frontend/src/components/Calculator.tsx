@@ -874,8 +874,13 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
 
                   // Save to Singleton
                   const store = CalculationResultStore.getInstance()
-                  store.clear()
-                  store.setData(calculationData)
+                  const existingData = store.getData()
+                  const orderAmount = existingData?.orderAmount
+
+                  store.setData({
+                    ...calculationData,
+                    orderAmount
+                  })
 
                   onShowResults(calculationData)
                 }}

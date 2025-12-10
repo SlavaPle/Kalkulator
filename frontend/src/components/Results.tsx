@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { User } from '../types'
 import { ArrowLeft, RotateCcw, Users } from 'lucide-react'
+import { CalculationResultStore } from '../utils/CalculationResultStore'
 
 interface ResultsProps {
   result: any
@@ -10,8 +11,25 @@ interface ResultsProps {
 }
 
 const Results = ({ result, users, onBack, onNew }: ResultsProps) => {
-  const [orderAmount, setOrderAmount] = useState<string>('')
+  const [orderAmount, setOrderAmount] = useState<string>(() => {
+    const storeData = CalculationResultStore.getInstance().getData()
+    return storeData?.orderAmount || ''
+  })
   const [splitCommonSlices, setSplitCommonSlices] = useState(false)
+
+  const handleOrderAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value
+
+    // Validation: allow empty string or positive number with max 2 decimal places
+    if (newValue === '' || /^\d*\.?\d{0,2}$/.test(newValue)) {
+      setOrderAmount(newValue)
+      const store = CalculationResultStore.getInstance()
+      const data = store.getData()
+      if (data) {
+        store.setData({ ...data, orderAmount: newValue })
+      }
+    }
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -102,7 +120,7 @@ const Results = ({ result, users, onBack, onNew }: ResultsProps) => {
         <input
           type="number"
           value={orderAmount}
-          onChange={(e) => setOrderAmount(e.target.value)}
+          onChange={handleOrderAmountChange}
           placeholder="Enter order amount"
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pizza-500 focus:border-pizza-500 text-lg"
         />
