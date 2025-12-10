@@ -377,6 +377,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                             <button
                               onClick={() => handleUpdateUserSlices(user.id, -1)}
                               disabled={user.minSlices <= 1}
+                              title="Decrease slices"
                               className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${user.minSlices <= 1
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
@@ -390,6 +391,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                             <button
                               onClick={() => handleUpdateUserSlices(user.id, 1)}
                               disabled={user.minSlices >= 20}
+                              title="Increase slices"
                               className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${user.minSlices >= 20
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
@@ -400,7 +402,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                           </div>
 
                           {/* "Can have more" checkbox */}
-                          <label className="flex items-center cursor-pointer flex-shrink-0" title="Can have more">
+                          <label className="flex items-center cursor-pointer flex-shrink-0" title="More possible">
                             <input
                               type="checkbox"
                               checked={user.canBeMore}
@@ -576,6 +578,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                   <button
                     onClick={() => setFormData({ ...formData, slices: Math.max(1, formData.slices - 1) })}
                     disabled={formData.slices <= 1}
+                    title="Decrease slices"
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${formData.slices <= 1
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
@@ -587,6 +590,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                   <button
                     onClick={() => setFormData({ ...formData, slices: Math.min(20, formData.slices + 1) })}
                     disabled={formData.slices >= 20}
+                    title="Increase slices"
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${formData.slices >= 20
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
@@ -597,7 +601,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
                 </div>
 
                 {/* "Can have more" checkbox */}
-                <label className="flex items-center cursor-pointer flex-shrink-0">
+                <label className="flex items-center cursor-pointer flex-shrink-0" title="More possible">
                   <input
                     type="checkbox"
                     checked={formData.canBeMore}
