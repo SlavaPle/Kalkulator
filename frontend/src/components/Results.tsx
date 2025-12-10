@@ -176,7 +176,7 @@ const Results = ({ result, users, onBack, onNew }: ResultsProps) => {
                 ))}
               </div>
             </div>
-            <div className="font-bold text-lg text-green-700">
+            <div className={`font-bold text-lg text-green-700 ${splitCommonSlices ? 'line-through opacity-50' : ''}`}>
               {pricePerSlice > 0 ? formatCurrency(commonSlicesCost) : '—'}
             </div>
           </div>
