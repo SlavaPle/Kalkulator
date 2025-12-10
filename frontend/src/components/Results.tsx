@@ -66,7 +66,7 @@ const Results = ({ result, users, onBack, onNew }: ResultsProps) => {
 
   // Calculate shared slices (extra)
   const totalUserSlices = useMemo(() => {
-    return Object.values(userSlicesDistribution).reduce((sum, val) => sum + val, 0)
+    return Object.values(userSlicesDistribution as Record<string, number>).reduce((sum: number, val: number) => sum + val, 0)
   }, [userSlicesDistribution])
 
   const commonSlices = totalSlices - totalUserSlices

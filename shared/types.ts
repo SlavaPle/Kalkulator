@@ -31,6 +31,7 @@ export interface User {
   id: string;
   name: string;
   minSlices: number;
+  maxSlices: number;
   canBeMore: boolean; // можно больше кусков
   preferredTypes?: string[]; // предпочтения по типам пиццы
   personalSauces: Sauce[];

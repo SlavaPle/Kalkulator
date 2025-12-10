@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { User, User as UserType, PizzaType, SauceType } from '../types'
+import { User, PizzaType, SauceType } from '../types'
 // import { UserManager, SauceManager, PizzaCalculator } from '../../shared/classes'
 import UserForm from '../components/UserForm'
 import PizzaSelector from '../components/PizzaSelector'
@@ -12,7 +12,7 @@ interface CalculatorPageProps {
   isGuest: boolean
 }
 
-const CalculatorPage = ({ currentUser, isGuest }: CalculatorPageProps) => {
+const CalculatorPage = ({ currentUser: _currentUser, isGuest: _isGuest }: CalculatorPageProps) => {
   const [users, setUsers] = useState<User[]>([])
   const [selectedPizzas, setSelectedPizzas] = useState<PizzaType[]>([])
   const [selectedSauces, setSelectedSauces] = useState<SauceType[]>([])
@@ -25,6 +25,7 @@ const CalculatorPage = ({ currentUser, isGuest }: CalculatorPageProps) => {
       name: userData.name,
       minSlices: userData.minSlices,
       maxSlices: userData.maxSlices,
+      canBeMore: false,
       preferredTypes: userData.preferredTypes,
       personalSauces: [],
       totalCost: 0,
@@ -43,15 +44,7 @@ const CalculatorPage = ({ currentUser, isGuest }: CalculatorPageProps) => {
       return
     }
 
-    const order = {
-      id: `order-${Date.now()}`,
-      users,
-      pizzas: [],
-      sharedSauces: [],
-      totalCost: 0,
-      freePizzaCount: 0,
-      createdAt: new Date()
-    }
+
 
     // Simple calculation for demonstration
     const totalSlices = users.reduce((sum, user) => sum + user.maxSlices, 0)
@@ -104,8 +97,8 @@ const CalculatorPage = ({ currentUser, isGuest }: CalculatorPageProps) => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
-                    ? 'border-pizza-500 text-pizza-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-pizza-500 text-pizza-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {tab.icon}

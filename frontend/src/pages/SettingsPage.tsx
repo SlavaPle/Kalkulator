@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { User } from '../types'
-import { Settings, Save, RotateCcw, User as UserIcon, Bell, Globe, CreditCard } from 'lucide-react'
+import { Settings, Save, RotateCcw, User as UserIcon, CreditCard } from 'lucide-react'
 
 interface SettingsPageProps {
   currentUser: User | null

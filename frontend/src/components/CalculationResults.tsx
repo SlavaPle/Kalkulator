@@ -193,7 +193,7 @@ const CalculationResults = ({ result }: CalculationResultsProps) => {
               Order visualization
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {result.optimalPizzas.map((pizza, index) => (
+              {result.optimalPizzas.map((pizza) => (
                 <div key={pizza.id} className="text-center">
                   <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center text-white font-bold text-lg mb-2 ${pizza.isFree ? 'bg-green-500' : 'bg-pizza-500'
                     }`}>

@@ -58,6 +58,7 @@ const AuthPage = ({ onLogin, onGuestMode }: AuthPageProps) => {
       id: `user-${Date.now()}`,
       name: formData.name.trim(),
       minSlices: 1,
+      maxSlices: 1,
       canBeMore: false,
       personalSauces: [],
       totalCost: 0,

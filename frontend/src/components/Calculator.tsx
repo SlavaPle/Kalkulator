@@ -72,6 +72,7 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
       id: `user-${Date.now()}`,
       name: userName,
       minSlices: formData.slices,
+      maxSlices: formData.slices,
       canBeMore: formData.canBeMore,
       personalSauces: [],
       totalCost: 0,
@@ -101,7 +102,8 @@ const CalculatorComponent = ({ users, setUsers, onShowResults }: CalculatorProps
         const newValue = Math.max(1, Math.min(20, user.minSlices + delta))
         return {
           ...user,
-          minSlices: newValue
+          minSlices: newValue,
+          maxSlices: newValue
         }
       }
       return user

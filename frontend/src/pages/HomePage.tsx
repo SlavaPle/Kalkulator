@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom'
 import { User } from '../types'
-import { Pizza, Calculator, Users, Settings, ArrowRight } from 'lucide-react'
+import { Pizza, Calculator, Users, ArrowRight } from 'lucide-react'
 
 interface HomePageProps {
   onLogin: (user: User) => void
   onGuestMode: () => void
 }
 
-const HomePage = ({ onLogin, onGuestMode }: HomePageProps) => {
+const HomePage = ({ onLogin: _onLogin, onGuestMode }: HomePageProps) => {
   const features = [
     {
       icon: <Calculator className="h-8 w-8 text-pizza-600" />,
