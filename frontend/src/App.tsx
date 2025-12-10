@@ -12,22 +12,9 @@ function App() {
   const [users, setUsers] = useState<User[]>([])
   const [result, setResult] = useState<any>(null)
 
-  const handleLogin = (user: User) => {
-    setCurrentUser(user)
-    setIsGuest(false)
-  }
-
   const handleGuestMode = () => {
     setCurrentUser(null)
     setIsGuest(true)
-  }
-
-  const handleLogout = () => {
-    setCurrentUser(null)
-    setIsGuest(false)
-    setUsers([])
-    setResult(null)
-    CalculationResultStore.getInstance().clear()
   }
 
   const handleShowResults = (calculationData: any) => {
@@ -73,7 +60,6 @@ function App() {
       <Header
         currentUser={currentUser}
         isGuest={isGuest}
-        onLogout={handleLogout}
       />
 
       <main className="mx-auto px-4 py-4" style={{ maxWidth: '800px' }}>
